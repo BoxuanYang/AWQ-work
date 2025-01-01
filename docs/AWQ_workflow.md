@@ -7,6 +7,9 @@
 ![alt text](image.png)
 
 可以看出，LLaMA7B模型由一个Int4LlamaForCausalLM的C++类表示，定义如下：
-![alt text](image-1.png)
+![alt text](image-1.png)。
 
+forward()方法实现模型的前向计算。
+
+此函数的实现在tinychat-tutorial/transformer/src/nn_modules/Int4llamaForCausalLM.cc中。
 
