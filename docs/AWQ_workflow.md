@@ -48,5 +48,14 @@ forward()方法实现模型的前向计算。返回一个Int4LlamaForCausalLM_ou
 一个由Matrix3D代表的 logits值，和std::vector<Matrix3D>代表的
 KV Cache。
 
+接下来我们看他的输入：一个Int4LlamaForCausalLM_input的struct。
+
+![alt text](image-10.png)
+
+从上图可看出，这个结构体包含一个输入序列和KV Cache。
+
+所以，forward()方法
+
+
 此函数的实现在tinychat-tutorial/transformer/src/nn_modules/Int4llamaForCausalLM.cc中。
 
