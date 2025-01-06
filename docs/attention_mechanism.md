@@ -1,8 +1,10 @@
 # Attention mechanism in Tinychat
 
 ## Linear transformation
-- Input hidden dimension: **[1: sqlen : embed_dim]** (1 is for batch size).
-- After qkv transformation, the qkv matrices *unshaped* dimensiones: **[1: sqlen: embed_dim]**, since the qkv weight matrices dimensiones are defined as **[embed_dim: embed_dim]**:
+Input hidden dimension: **[1: sqlen : embed_dim]** (1 is for batch size).
+
+After qkv transformation, the qkv matrices *unshaped* dimensiones: **[1: sqlen: embed_dim]**, since the qkv weight matrices dimensiones are defined as **[embed_dim: embed_dim]**:
+
 ```c++
 // Note: The "/ 2" comes from the fact the weight is stored in *in4* format, i.e. 1 uint8_t stores 2 weight values.
 this->q_proj =
@@ -72,7 +74,11 @@ for (int i = 0; i < config.num_layers; ++i) {
 
 #### No kv cache / Prefill phase
 
-In prefill phase, the sequence length is more than 1, usually comprised of system prompt and user prompts. Here the value in value_states_arr is the value matrix generated from the linear transformation,  matrix-matrix multiplications. The same applies to key matrix. By copying kv values into memory buffers, they are ready for attention computation.
+In prefill phase, the sequence length is more than 1, usually comprised of system prompt and user prompts.
+
+Here the value in value_states_arr is the value matrix generated from the linear transformation,  matrix-matrix multiplications.
+
+The same applies to key matrix. By copying kv values into memory buffers, they are ready for attention computation.
 
 ```c++
 // Concate with past key, value if exists
@@ -91,10 +97,14 @@ Matrix3D<float> final_key_states(ret_key_states, this->num_heads, tgz, this->hea
 
 #### With kv cache / Decode phase
 
-In decode phase, sequence length is 1, the previously generated token. Thus, kv values are generated from linear transformations that are in fact matrix-vector multiplications. They are not ready to be fed into attention computation unless concatenated with kv cache.\
-In the implementation, `tgz` goes from 1 to the correct length (being added to the kv cache length).\
-`past_block` is computed by multiplying the kv cache length and the `head_dim`, while `sq_block` is computed by multiplying `sqlen` (which is 1) and the `head_dim`.\
-In the iteration, per-headly, kv cache is copied from `input.past_key` and `input.past_value` into `key_ptr` and `val_ptr`, which actually are storing kv cache into the *memory buffer* mentioned above.\
+In decode phase, sequence length is 1, the previously generated token. Thus, kv values are generated from linear transformations that are in fact matrix-vector multiplications. They are not ready to be fed into attention computation unless concatenated with kv cache.
+
+In the implementation, `tgz` goes from 1 to the correct length (being added to the kv cache length).
+
+`past_block` is computed by multiplying the kv cache length and the `head_dim`, while `sq_block` is computed by multiplying `sqlen` (which is 1) and the `head_dim`.
+
+In the iteration, per-headly, kv cache is copied from `input.past_key` and `input.past_value` into `key_ptr` and `val_ptr`, which actually are storing kv cache into the *memory buffer* mentioned above.
+
 Similarly, the newly computed kv values are also copied into memory buffer.
 
 ```c++
@@ -133,7 +143,8 @@ Matrix3D<float> final_key_states(ret_key_states, this->num_heads, tgz, this->hea
 
 ### Query and Key
 
-The output of qk multiplication is stored in `attn_weights`, of dimension [num_heads: sqlen: tgz].\
+The output of qk multiplication is stored in `attn_weights`, of dimension [num_heads: sqlen: tgz].
+
 For example, in prefill phase, let sequence length be 30:
 
 |matrix|dimension|
@@ -184,13 +195,16 @@ softmax(attn_weights, attn_probs, 2);
 
 ### Output
 
-Do note that `input.hidden_states`'s dimension is **[batch_size: sqlen: embed_dim]**, the output matrix should preserve that dimension to ensure consistency.\
-`attn_output` is computed by multiplying attention probabilities and values states and has dimension **[num_heads: sqlen: head_dim]**, which is not the hidden states dimension, thus the name *untransposed*.\
-Another function call *unshape* shapes it into the hidden states dimension: **[batch_size: sqlen: embed_dim]**.\
+Do note that `input.hidden_states`'s dimension is **[batch_size: sqlen: embed_dim]**, the output matrix should preserve that dimension to ensure consistency.
 
-The last process is output projection by `o_proj`.\
+`attn_output` is computed by multiplying attention probabilities and values states and has dimension **[num_heads: sqlen: head_dim]**, which is not the hidden states dimension, thus the name *untransposed*.
+
+Another function call *unshape* shapes it into the hidden states dimension: **[batch_size: sqlen: embed_dim]**.
+
+The last process is output projection by `o_proj`.
 
 And...everything is done.
+
 ```c++
 Matrix3D<float> attn_output(attn_output_arr, this->num_heads, sqlen, this->head_dim);
 this->pv_bmm.forward_weight_untransposed(attn_probs, final_value_states, attn_output);
